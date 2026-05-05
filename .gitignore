@@ -1,0 +1,25 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test / coverage
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
+
+# Env
+.env
+.env.local
+
+# Vendor (only if you commit it, otherwise let go modules handle it)
+# vendor/
