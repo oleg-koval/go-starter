@@ -1,6 +1,7 @@
+version: "2"
+
 run:
   timeout: 3m
-  tests: true
 
 linters:
   enable:
@@ -18,14 +19,13 @@ linters:
     - revive
     - unconvert
     - unparam
-
-linters-settings:
-  govet:
-    enable-all: true
-  revive:
-    rules:
-      - name: exported
-        severity: warning
+  settings:
+    govet:
+      enable-all: true
+    revive:
+      rules:
+        - name: exported
+          severity: warning
 
 issues:
   exclude-rules:
