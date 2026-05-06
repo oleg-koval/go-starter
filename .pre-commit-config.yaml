@@ -1,0 +1,41 @@
+repos:
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go fmt
+        language: system
+        entry: bash -c 'make fmt && git diff --exit-code'
+        pass_filenames: false
+        types: [go]
+
+      - id: go-lint
+        name: golangci-lint
+        language: system
+        entry: make lint
+        pass_filenames: false
+        types: [go]
+
+      - id: go-test
+        name: go test
+        language: system
+        entry: make test
+        pass_filenames: false
+        types: [go]
+
+      - id: file-length-check
+        name: file length ≤ 300 lines
+        language: system
+        entry: bash -c '
+          failed=0
+          for f in "$@"; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 300 ]; then
+              echo "ERROR: $f has $lines lines (max 300)"
+              failed=1
+            fi
+          done
+          exit $failed
+        '
+        types: [go]
+        pass_filenames: true
+        exclude: "(\\.pb\\.go|_gen\\.go)$"

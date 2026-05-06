@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt cover tidy run clean
+.PHONY: build test lint fmt cover tidy run clean hooks
 
 BINARY := bin/app
 PKG := ./...
@@ -28,3 +28,6 @@ tidy:
 
 clean:
 	rm -rf bin/ coverage.out coverage.html
+
+hooks:
+	pre-commit install

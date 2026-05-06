@@ -17,6 +17,18 @@ Then:
 go mod tidy
 ```
 
+## Pre-commit hooks
+
+Requires `pre-commit` (`brew install pre-commit` or `pip install pre-commit`).
+Install once:
+
+```bash
+make hooks
+```
+
+Hooks run `make fmt`, `make lint`, `make test`, and a 300-line file-length check
+on every commit. `git commit --no-verify` is rejected in code review.
+
 ## Commands
 
 - Run tests: `make test` (or `go test -race ./...`)
@@ -34,7 +46,8 @@ CI runs `make test` and `make lint`. Both must pass.
   private packages. Public packages at repo root only when intentional.
 - Errors: wrap with `fmt.Errorf("context: %w", err)`. Use `errors.Is` /
   `errors.As` for inspection.
-- Tests: table-driven where it fits. Use `t.Run` for subtests.
+- Tests: prefer integration tests that exercise the full call path. Unit-test only
+  pure functions with non-trivial branching. Table-driven tests with `t.Run` for subtests.
 - Exported identifiers must have a doc comment starting with the name.
 - No `panic` outside `main` or `init` unless documented as the contract.
 
