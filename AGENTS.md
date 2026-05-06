@@ -4,6 +4,15 @@ Instructions for AI coding agents (Claude Code, Codex, Cursor, Copilot).
 
 ## Setup
 
+Requires Go 1.23+ and [golangci-lint](https://golangci-lint.run/). If missing:
+
+```bash
+brew install go golangci-lint
+# or: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+Then:
+
 ```bash
 go mod tidy
 ```

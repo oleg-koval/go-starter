@@ -33,6 +33,16 @@ greet.Hello("Oleg") // "Hello, Oleg!"
 
 ## Development
 
+Requires Go 1.23+ and [golangci-lint](https://golangci-lint.run/) for linting:
+
+```bash
+# Go: https://go.dev/dl/  (or `brew install go`)
+brew install golangci-lint
+# or: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+Then:
+
 ```bash
 make test     # run tests with race detector
 make lint     # golangci-lint
