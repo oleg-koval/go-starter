@@ -31,8 +31,8 @@ linters:
             - maxLines: 300
           severity: error
 
-exclusions:
-  rules:
+issues:
+  exclude-rules:
     - path: _test\.go
       linters:
         - gosec
