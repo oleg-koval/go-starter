@@ -2,7 +2,7 @@ package greet
 
 import "testing"
 
-func TestFormat(t *testing.T) {
+func TestHello(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
@@ -15,8 +15,8 @@ func TestFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := format(tt.in); got != tt.want {
-				t.Errorf("format(%q) = %q, want %q", tt.in, got, tt.want)
+			if got := Hello(tt.in); got != tt.want {
+				t.Errorf("Hello(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}

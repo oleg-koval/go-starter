@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oleg-koval/go-starter/internal/greet"
+	"github.com/oleg-koval/go-starter/greet"
 )
 
 // Injected at build time via -ldflags.

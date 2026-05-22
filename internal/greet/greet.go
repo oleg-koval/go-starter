@@ -1,9 +1,10 @@
-// Package greet provides simple greeting helpers.
+// Package greet contains internal helpers used only by this module.
+// External modules cannot import packages under internal/.
 package greet
 
 import "fmt"
 
-// Hello returns a friendly greeting addressed to name.
-func Hello(name string) string {
+// format returns a greeting string — not exported outside this module.
+func format(name string) string {
 	return fmt.Sprintf("Hello, %s!", name)
 }

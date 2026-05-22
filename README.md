@@ -30,7 +30,7 @@ app version
 ```
 
 ```go
-import "github.com/oleg-koval/go-starter/internal/greet"
+import "github.com/oleg-koval/go-starter/greet"
 
 greet.Hello("Oleg") // "Hello, Oleg!"
 ```
@@ -58,11 +58,12 @@ make build    # build binary to bin/app (with version injection)
 
 ```
 cmd/app/           # main binary
-internal/greet/    # private packages (not importable externally)
+greet/             # public package — importable by external modules
+internal/greet/    # private package — only usable within this module
 ```
 
 Following the [standard Go project layout](https://go.dev/doc/modules/layout).
-Public packages live at the repo root when intentional.
+Public packages live at named subdirectories; `internal/` packages are module-private.
 
 ## Releasing
 
