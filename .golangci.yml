@@ -1,5 +1,3 @@
-version: "2"
-
 run:
   timeout: 3m
 
@@ -17,25 +15,27 @@ linters:
     - revive
     - unconvert
     - unparam
-  settings:
-    govet:
-      enable-all: true
-    revive:
-      rules:
-        - name: exported
-          severity: warning
-        - name: file-length-limit
-          arguments:
-            - maxLines: 300
-          severity: error
-  exclusions:
+
+linters-settings:
+  govet:
+    enable-all: true
+  revive:
     rules:
-      - path: _test\.go
-        linters:
-          - gosec
-      - path: ".*\\.pb\\.go"
-        linters:
-          - revive
-      - path: ".*_gen\\.go"
-        linters:
-          - revive
+      - name: exported
+        severity: warning
+      - name: file-length-limit
+        arguments:
+          - maxLines: 300
+        severity: error
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+    - path: ".*\\.pb\\.go"
+      linters:
+        - revive
+    - path: ".*_gen\\.go"
+      linters:
+        - revive
