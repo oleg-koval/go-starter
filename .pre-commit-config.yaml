@@ -25,17 +25,7 @@ repos:
       - id: file-length-check
         name: file length ≤ 300 lines
         language: system
-        entry: bash -c '
-          failed=0
-          for f in "$@"; do
-            lines=$(wc -l < "$f")
-            if [ "$lines" -gt 300 ]; then
-              echo "ERROR: $f has $lines lines (max 300)"
-              failed=1
-            fi
-          done
-          exit $failed
-        '
+        entry: bash scripts/check-file-length.sh
         types: [go]
         pass_filenames: true
         exclude: "(\\.pb\\.go|_gen\\.go)$"
