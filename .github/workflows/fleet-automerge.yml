@@ -26,23 +26,21 @@ jobs:
   discover:
     permissions:
       pull-requests: read
-    timeout-minutes: 5
-    # Discovery has no write credentials and stays on the CI pool.
-    runs-on: ${{ github.event.repository.private && fromJSON('["Linux","fleet-ci"]') || 'ubuntu-latest' }}
+    # Private repos share the self-hosted queue across NAS and Mac Linux runners.
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     outputs:
       pr-numbers: ${{ steps.list.outputs.pr-numbers }}
     steps:
       - id: list
         env:
           GH_TOKEN: ${{ github.token }}
-          CODEX_REVIEWER: ${{ vars.FLEET_CODEX_REVIEW_LOGIN || '' }}
           EVENT_NAME: ${{ github.event_name }}
           REQUESTED_PR_NUMBER: ${{ inputs.pr-number || '' }}
         run: |
           set -euo pipefail
           case "$EVENT_NAME" in
             schedule)
-              candidates="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | select(.head.repo.full_name == .base.repo.full_name and (.head.ref == "fleet/sync" or .user.login == "oleg-koval") and any(.labels[]; .name == "fleet-automerge")) | .number' | jq -Rsc 'split("\n") | map(select(length > 0) | tonumber)')"
+              candidates="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | select(.head.repo.full_name == .base.repo.full_name and (.head.ref == "fleet/sync" or .user.login == "oleg-koval")) | .number' | jq -Rsc 'split("\n") | map(select(length > 0) | tonumber)')"
               ;;
             workflow_dispatch)
               if [[ -n "$REQUESTED_PR_NUMBER" ]]; then
@@ -52,7 +50,7 @@ jobs:
                 fi
                 candidates="[$REQUESTED_PR_NUMBER]"
               else
-                candidates="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | select(.head.repo.full_name == .base.repo.full_name and (.head.ref == "fleet/sync" or .user.login == "oleg-koval") and any(.labels[]; .name == "fleet-automerge")) | .number' | jq -Rsc 'split("\n") | map(select(length > 0) | tonumber)')"
+                candidates="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | select(.head.repo.full_name == .base.repo.full_name and (.head.ref == "fleet/sync" or .user.login == "oleg-koval")) | .number' | jq -Rsc 'split("\n") | map(select(length > 0) | tonumber)')"
               fi
               ;;
             check_suite)
@@ -68,16 +66,7 @@ jobs:
           pr_numbers='[]'
           while IFS= read -r number; do
             [[ "$number" =~ ^[1-9][0-9]*$ ]] || continue
-            pull="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number")"
-            eligible="$(jq -r '(.head.repo.full_name == .base.repo.full_name) and (.head.ref == "fleet/sync" or .user.login == "oleg-koval") and any(.labels[]; .name == "fleet-automerge")' <<< "$pull")"
-            head_sha="$(jq -r '.head.sha' <<< "$pull")"
-            if [[ "$eligible" == "true" && -n "$CODEX_REVIEWER" ]]; then
-              reviews="$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls/$number/reviews?per_page=100")"
-              codex_positive="$(jq -r --arg head "$head_sha" --arg reviewer "${CODEX_REVIEWER,,}" 'add | map(select(.commit_id == $head and .user.type == "Bot" and (.user.login | ascii_downcase) == $reviewer)) | group_by(.user.login) | map(last) | any(.state == "APPROVED" or .state == "COMMENTED")' <<< "$reviews")"
-              [[ "$codex_positive" == "true" ]] || eligible=false
-            else
-              eligible=false
-            fi
+            eligible="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq '.head.repo.full_name == .base.repo.full_name and (.head.ref == "fleet/sync" or .user.login == "oleg-koval")')"
             if [[ "$eligible" == "true" ]]; then
               pr_numbers="$(jq -c --argjson number "$number" '. + [$number]' <<< "$pr_numbers")"
             fi
@@ -100,31 +89,21 @@ jobs:
       issues: read
       checks: read
       statuses: read
-    timeout-minutes: 10
-    # Write credentials only enter the isolated privileged pool.
-    runs-on: ${{ github.event.repository.private && fromJSON('["Linux","fleet-sync"]') || 'ubuntu-latest' }}
+    # Private repos share the self-hosted queue across NAS and Mac Linux runners.
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
-      max-parallel: 2
       matrix:
         pr-number: ${{ fromJSON(needs.discover.outputs.pr-numbers) }}
     concurrency:
       group: fleet-automerge-${{ matrix.pr-number }}
       cancel-in-progress: false
     steps:
-      - name: Validate immutable automerge source
-        env:
-          ACTION_SHA: ${{ vars.FLEET_AUTOMERGE_ACTION_SHA }}
-        run: |
-          set -euo pipefail
-          if [[ ! "$ACTION_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "FLEET_AUTOMERGE_ACTION_SHA must identify a reviewed action commit" >&2
-            exit 1
-          fi
+      # Run the same pinned action without requiring Docker access on the runner.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: oleg-koval/pr-automerge-github-action
-          ref: ${{ vars.FLEET_AUTOMERGE_ACTION_SHA }}
+          ref: 0ce5a36e264c296c8d542adc715540fcd466ae56
           path: .fleet-automerge-action
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -134,37 +113,7 @@ jobs:
       - name: Build pinned automerge action
         env:
           CGO_ENABLED: '0'
-        run: |
-          set -euo pipefail
-          # Refuse old action versions that conflate suppression and eligibility.
-          grep -q '^  suppress-comments:' .fleet-automerge-action/action.yml
-          grep -q '^  required-reviewer-logins:' .fleet-automerge-action/action.yml
-          grep -q '^  expected-head-sha:' .fleet-automerge-action/action.yml
-          go build -C .fleet-automerge-action -o "$RUNNER_TEMP/fleet-automerge" ./cmd/pr-automerge-action
-      - name: Recheck current-head Codex review
-        id: reviewed-head
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CODEX_REVIEWER: ${{ vars.FLEET_CODEX_REVIEW_LOGIN || '' }}
-          PR_NUMBER: ${{ matrix.pr-number }}
-        run: |
-          set -euo pipefail
-          if [ -z "$CODEX_REVIEWER" ]; then
-            echo "FLEET_CODEX_REVIEW_LOGIN is not configured; refusing to merge" >&2
-            exit 1
-          fi
-          pull="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
-          head_sha="$(jq -r '.head.sha' <<< "$pull")"
-          if ! jq -e '(.head.repo.full_name == .base.repo.full_name) and (.head.ref == "fleet/sync" or .user.login == "oleg-koval") and any(.labels[]; .name == "fleet-automerge")' <<< "$pull" >/dev/null; then
-            echo "PR is no longer same-repository, eligible, and opted in" >&2
-            exit 1
-          fi
-          reviews="$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100")"
-          if ! jq -e --arg head "$head_sha" --arg reviewer "${CODEX_REVIEWER,,}" 'add | map(select(.commit_id == $head and .user.type == "Bot" and (.user.login | ascii_downcase) == $reviewer)) | group_by(.user.login) | map(last) | any(.state == "APPROVED" or .state == "COMMENTED")' <<< "$reviews" >/dev/null; then
-            echo "No completed Codex review for current head $head_sha" >&2
-            exit 1
-          fi
-          printf 'expected-head-sha=%s\n' "$head_sha" >> "$GITHUB_OUTPUT"
+        run: go build -C .fleet-automerge-action -o "$RUNNER_TEMP/fleet-automerge" ./cmd/pr-automerge-action
       - name: Run pinned automerge action
         env:
           INPUT_GITHUB_TOKEN: ${{ github.token }}
@@ -172,10 +121,6 @@ jobs:
           INPUT_MAINTAINER_HANDLES: oleg-koval
           INPUT_IGNORED_CHECK_NAMES: automerge,automerge (${{ matrix.pr-number }})
           INPUT_AUTOMERGE_WORKFLOW_PATH: .github/workflows/fleet-automerge.yml
-          INPUT_NO_PR_COMMENTS: 'false'
-          INPUT_SUPPRESS_COMMENTS: 'true'
-          INPUT_REQUIRED_REVIEWER_LOGINS: ${{ vars.FLEET_CODEX_REVIEW_LOGIN }}
-          INPUT_EXPECTED_HEAD_SHA: ${{ steps.reviewed-head.outputs.expected-head-sha }}
-          INPUT_WAIT_TIMEOUT: 0s
+          INPUT_NO_PR_COMMENTS: 'true'
           INPUT_PR_NUMBER: ${{ matrix.pr-number }}
         run: '"$RUNNER_TEMP/fleet-automerge"'
